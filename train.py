@@ -102,7 +102,7 @@ class Train(object):
 
         step_losses = []
         for di in range(min(max_dec_len, config.max_dec_steps)): 
-            print("Decoder step = ", di)
+            # print("Decoder step = ", di)
             y_t_1 = dec_batch[:, di]  # Teacher forcing  #  the dith word of all the examples/targets in a batch of shape (8,)
             final_dist, s_t_1,  c_t_1, attn_dist, p_gen, next_coverage = self.model.decoder(y_t_1, s_t_1,
                                                         encoder_outputs, encoder_feature, enc_padding_mask, c_t_1,
@@ -143,6 +143,7 @@ class Train(object):
 
     def trainIters(self, n_iters, model_file_path=None):
         iter, running_avg_loss = self.setup_train(model_file_path)
+        print("Initial running average loss is", running_avg_loss)
         start = time.time()
         while iter < n_iters:
             print("Iteration: ", iter)
@@ -174,7 +175,7 @@ if __name__ == '__main__':
     print("Model file path is ", args.model_file_path)
     
     train_processor = Train()
-    args.model_file_path = None
+    # args.model_file_path = None
     train_processor.trainIters(config.max_iterations, args.model_file_path)
 
 

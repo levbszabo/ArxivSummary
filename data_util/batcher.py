@@ -1,7 +1,13 @@
-import Queue
+# import Queue
+from itertools import chain
+import sys
 import time
 from random import shuffle
 from threading import Thread
+
+from six.moves import queue as Queue
+from six.moves import xrange
+import six
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -210,7 +216,7 @@ class Batcher(object):
 
     while True:
       try:
-        (article, abstract) = input_gen.next() # read the next example from file. article and abstract are both strings.
+        (article, abstract) = six.next(input_gen)#input_gen.next() # read the next example from file. article and abstract are both strings.
       except StopIteration: # if there are no more examples:
         tf.logging.info("The example generator for this example queue filling thread has exhausted data.")
         if self._single_pass:
@@ -219,8 +225,10 @@ class Batcher(object):
           break
         else:
           raise Exception("single_pass mode is off but the example generator is out of data; error.")
-
-      abstract_sentences = [sent.strip() for sent in data.abstract2sents(abstract)] # Use the <s> and </s> tags in abstract to get a list of sentences.
+      abstract = abstract.decode('UTF-8')
+      article = article.decode('UTF-8')
+      abstract_sentences = [e.replace(data.SENTENCE_START, '').replace(data.SENTENCE_END, '').strip() for e in abstract]
+      
       example = Example(article, abstract_sentences, self._vocab) # Process into an Example.
       self._example_queue.put(example) # place the Example in the example queue.
 
@@ -276,10 +284,10 @@ class Batcher(object):
 
   def text_generator(self, example_generator):
     while True:
-      e = example_generator.next() # e is a tf.Example
+      e = six.next(example_generator)#example_generator.next() # e is a tf.Example
       try:
-        article_text = e.features.feature['article'].bytes_list.value[0] # the article text was saved under the key 'article' in the data files
-        abstract_text = e.features.feature['abstract'].bytes_list.value[0] # the abstract text was saved under the key 'abstract' in the data files
+        article_text = e.features.feature['abstract'].bytes_list.value[0] # the article text was saved under the key 'article' in the data files
+        abstract_text = e.features.feature['article'].bytes_list.value[0] # the abstract text was saved under the key 'abstract' in the data files
       except ValueError:
         tf.logging.error('Failed to get article or abstract from example')
         continue

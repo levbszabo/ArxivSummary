@@ -1,15 +1,15 @@
 import os
 
-root_dir = "data_util/test_data"
-# train_data_path = os.path.join(root_dir, "finished_files/chunked/train_*")
-# eval_data_path = os.path.join(root_dir, "finished_files/val.bin")
-# decode_data_path = os.path.join(root_dir, "finished_files/test.bin")
-# vocab_path = os.path.join(root_dir, "finished_files/vocab")
-
-train_data_path = os.path.join(root_dir, "val.bin")
-eval_data_path = os.path.join(root_dir, "val.bin")
-decode_data_path = os.path.join(root_dir, "val.bin")
+root_dir = "data"
+train_data_path = os.path.join(root_dir, "chunked/train_*")
+eval_data_path = os.path.join(root_dir, "train_8000.bin")
+decode_data_path = os.path.join(root_dir, "train_8000.bin")
 vocab_path = os.path.join(root_dir, "vocab")
+
+# train_data_path = os.path.join(root_dir, "val.bin")
+# eval_data_path = os.path.join(root_dir, "val.bin")
+# decode_data_path = os.path.join(root_dir, "val.bin")
+# vocab_path = os.path.join(root_dir, "vocab")
 log_root = os.path.join("model_data", "log")
 
 # Hyperparameters
@@ -33,7 +33,7 @@ is_coverage = True
 cov_loss_wt = 1.0
 
 eps = 1e-12
-max_iterations = 5 #500000
+max_iterations = 7 #500000
 
 use_gpu=True
 

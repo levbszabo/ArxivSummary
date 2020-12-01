@@ -106,7 +106,7 @@ if __name__ == '__main__':
     else:
         num_articles = args.num
     with open(args.infile,"r") as f:
-        for i in range(160): 
+        for i in range(num_articles): 
             print("Article no:", i, " of ", num_articles)
             line = f.readline()
             if not line.strip():
