@@ -3,6 +3,8 @@ import numpy as np
 import json
 from rouge_score import rouge_scorer
 from argparse import ArgumentParser
+from nltk.translate.bleu_score import corpus_bleu
+
 
 #We specify the keywords for each section
 section_keywords = {'introduction':['introduction', 'case'],
@@ -28,30 +30,43 @@ def match_section(sec_name):
         return None
     else:
         return keys[np.argmax(counts)]  
-
-#Using a rouge scorer we group all the abstract sentences
-def match_abstract(abstract,sections):
-    scorer = rouge_scorer.RougeScorer(['rougeLsum'],use_stemmer=True) # why rougeLsum?
+#Using a rouge or bleu scorer we group all the abstract sentences
+def match_abstract(abstract,sections,metric='rouge'):
     abstract_groupings = [[] for _ in keys]
-    sec_strings = []
-    rouge_scores_list = []
-    for sec in sections:
-        if sec == None:
-            sec_strings.append("")
-        else:
-            sec = [re.sub(r"\n","",v).strip() for v in sec]
-            sec = "\n".join(sec)
-            sec_strings.append(sec)
-    for sent in abstract:
-        sent_clean = re.sub(r"<S>|</S>|\n","",sent).strip()
-        rouge_scores = [scorer.score(sent_clean,sec_str)['rougeLsum'].precision for sec_str in sec_strings] #changed recall to precision
-        section_label = np.argmax(rouge_scores)
-        abstract_groupings[section_label].append(sent)
+    if metric == 'rouge':
+        scorer = rouge_scorer.RougeScorer(['rougeL'],use_stemmer=True) # why rougeLsum?
+        for sent in abstract:
+            sent_clean = re.sub(r"<S>|</S>|\n","",sent).strip()
+            rouge_scores = []
+            for i in range(len(sections)):
+                if sections[i] == None:
+                    rouge_scores.append(0)
+                else:
+                    sc = max([scorer.score(sections[i][j],sent)['rougeL'].precision for j in range(len(sections[i]))])
+                    rouge_scores.append(sc)
+            section_label = np.argmax(rouge_scores)
+            abstract_groupings[section_label].append(sent)
+    else:
+        for sent in abstract:
+            sent_clean = re.sub(r"<S>|</S>|\n","",sent).strip()
+            sent_clean = sent_clean.split(" ")
+            bleu_scores = []
+            for i in range(len(sections)):
+                if sections[i] == None:
+                    bleu_scores.append(0)
+                else:
+                    sec_formatted = [[sections[i][j].strip().split(" ") for j in range(len(sections[i]))]]
+                    bleu_score = corpus_bleu(sec_formatted,[sent_clean])
+                    bleu_scores.append(bleu_score)
+            section_label = np.argmax(bleu_scores)
+            abstract_groupings[section_label].append(sent)
+    print([len(v) for v in abstract_groupings])
     return abstract_groupings 
+        
     
 # for a given article d as dictionary we filter sections and mark abstracts
 # output is a list of strings encoded as dictionaries, each of these is a "new" article
-def generate_summaries(d):
+def generate_summaries(d,metric='rouge'):
     outputs = []
     section_names = d["section_names"]
     section_text = np.array(d["sections"])
@@ -67,9 +82,19 @@ def generate_summaries(d):
         if len(merged_text) <= 1:
             new_section_text.append(None)
         else:
+            merged_text = merged_text.split(".")
             new_section_text.append(merged_text)
+    
     abstract = d["abstract_text"]
-    abstract_groupings = match_abstract(abstract,new_section_text)
+    abstract_groupings = match_abstract(abstract,new_section_text,metric)
+    new_section_t = []
+    for i in range(len(new_section_text)):
+        if new_section_text[i] != None:
+            val = " ".join(new_section_text[i])
+            new_section_t.append(val)
+        else:
+            new_section_t.append(None)
+    new_section_text = new_section_t
     # print(abstract_groupings)
     for i,a in enumerate(abstract_groupings):
         if len(a) != 0 and new_section_text[i] != None:
@@ -85,18 +110,17 @@ def generate_summaries(d):
             data = {'abstract_text':abstract_text, 'sections':sections}
             outputs.append(json.dumps(data))
             # outputs.append(data)
-    print(len(outputs))
     # print(outputs[1]['abstract_text'])
     # print('########################')
     # print(outputs[1]['sections'])
     return outputs
-
 
 if __name__ == '__main__':
     ap = ArgumentParser()
     ap.add_argument('infile', help='path to the jsonlines data')
     ap.add_argument('outfile', help='path to the output file')
     ap.add_argument('--num',type = int,default = -1, help ='number of articles to process')
+    ap.add_argument('--metric', type = str, default = 'rouge',help='type of metric used to split abstract')
     args = ap.parse_args()
     #We read in a text file and apply section filtering and abstract matching
     out = open(args.outfile, 'w+', encoding='utf-8') 
@@ -113,7 +137,7 @@ if __name__ == '__main__':
                 continue
             line = line.strip()
             data = json.loads(line)
-            data_outputs = generate_summaries(data)
+            data_outputs = generate_summaries(data,args.metric)
             with open(args.outfile,"a",encoding='utf-8') as out:
                 for data_out in data_outputs:
                     out.write(data_out+"\n")
